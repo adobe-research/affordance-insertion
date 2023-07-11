@@ -1,0 +1,12 @@
+input_dir: null
+output_dir: null
+
+extractor:
+  # quality: 90
+  resolution: 256
+  min_frames: 3
+  # max_frames: 3000
+  num_jobs: -1
+
+defaults:
+  - disable_output

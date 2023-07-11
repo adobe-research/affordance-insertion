@@ -1,0 +1,35 @@
+input_dir: null
+output_dir: null
+min_frames: 3
+split_on_frame_break: True
+# quality: 90
+
+data:
+  resolution: 256
+  batch_size: 360
+  num_workers: 11
+
+pose_detector:
+  min_people: 1
+  max_people: 1
+  threshold_0: 0.1
+  threshold_1: 0.05
+  threshold_total_relaxed: 2.5
+  threshold_total_strict: 10.0
+  threshold_keypoint: 0.3
+  min_keypoints: 8
+  assert_ids:
+    - 1
+  ignore_ids:
+    - 14
+    - 15
+    - 16
+    - 17
+
+backend:
+  accelerator: ddp
+  gpus: -1
+  logger: null
+
+defaults:
+  - disable_output

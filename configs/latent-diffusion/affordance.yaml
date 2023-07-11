@@ -1,0 +1,155 @@
+model:
+  base_learning_rate: 7.5e-05
+  target: ldm.models.diffusion.ddpm.LatentDiffusion
+  params:
+    ckpt_path: /scratch/sd-v1-5-inpainting.ckpt # point this to stable diffusion ckpt
+    ignore_keys:
+      - "load_maximally"
+      - "cond_stage_model"
+      # - "model.diffusion_model.input_blocks.0.0.weight"
+    linear_start: 0.00085
+    linear_end: 0.0120
+    num_timesteps_cond: 1
+    log_every_t: 200
+    timesteps: 1000
+    first_stage_key: image
+    cond_stage_key: 
+      concat:
+        - key: masked_image
+          encoder: first
+        - key: mask
+          encoder: rescale
+      crossattn:
+        - key: refer_person_clip
+          encoder: cond
+    conditioning_key: hybrid
+    image_size: 32
+    channels: 4
+    cond_stage_trainable: false   # Note: different from the one we trained before
+    monitor: val/loss_simple_ema
+    scale_factor: 0.18215
+    use_ema: True         # stable diffusion inference sets it to False
+    
+    scheduler_config: # 10000 warmup steps
+      target: ldm.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps: [ 10000 ]
+        cycle_lengths: [ 10000000000000 ] # incredibly large number to prevent corner cases
+        f_start: [ 1.e-6 ]
+        f_max: [ 1. ]
+        f_min: [ 1. ]
+
+    unet_config:
+      target: ldm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        image_size: 32
+        in_channels: 9
+        out_channels: 4
+        model_channels: 320
+        attention_resolutions: [ 4, 2, 1 ]
+        num_res_blocks: 2
+        channel_mult: [ 1, 2, 4, 4 ]
+        num_heads: 8
+        use_spatial_transformer: True
+        transformer_depth: 1
+        raw_context_dim: 1024
+        context_dim: 768
+        use_checkpoint: False
+        legacy: False
+    
+    first_stage_config:
+      target: ldm.models.autoencoder.AutoencoderKL
+      params:
+        embed_dim: 4
+        monitor: val/rec_loss
+        ddconfig:
+          double_z: true
+          z_channels: 4
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult:
+          - 1
+          - 2
+          - 4
+          - 4
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+
+    cond_stage_config:
+      target: ldm.modules.encoders.modules.FrozenHFCLIPImageEmbedder
+    
+    rescale_stage_config:
+      target: ldm.modules.encoders.modules.SpatialRescaler
+      params:
+        n_stages: 3
+        method: 'nearest-exact'
+
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 32
+    num_workers: 11
+    wrap: false
+    train:
+      target: ldm.data.hic.HiC
+      params:
+        path: './data/' # point to data
+        split: 'train'
+        resolution: 256
+        flip_p: 0.5
+        config:
+          mode: 'train'
+          masks:
+            - 30
+            - 15
+            - 20
+            - 15
+            - 20
+          dilation: 20
+          dilation_mode: 'random'
+          zero_person: False
+          data_type: 'video'
+          augment: True
+    validation:
+      target: ldm.data.hic.HiC
+      params:
+        path: './data/' # point to data
+        split: 'test'
+        resolution: 256
+        flip_p: 0.0
+        config:
+          mode: 'swap'
+          masks:
+            - 100
+            - 0
+            - 0
+            - 0
+            - 0
+          dilation: 10
+          dilation_mode: 'fixed'
+          zero_person: False
+          data_type: 'video'
+          augment: False
+        
+lightning:
+  callbacks:
+    metrics_over_trainsteps_checkpoint:
+      target: pytorch_lightning.callbacks.ModelCheckpoint
+ 
+    image_logger:
+      target: main.ImageLogger
+      params:
+        batch_frequency: 5000
+        max_images: 8
+        increase_log_steps: False
+
+  trainer:
+    strategy: ddp_find_unused_parameters_false
+    max_epochs: -1
+    benchmark: True
+  

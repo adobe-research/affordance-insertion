@@ -1,0 +1,29 @@
+input_dir: null
+output_dir: null
+min_frames: 3
+split_on_frame_break: True
+# quality: 90
+
+data:
+  resolution: 256
+  batch_size: 160
+  num_workers: 11
+
+person_filter:
+  min_people: 1
+  max_people: 1
+  threshold_nms: 0.3
+  threshold_relaxed: 0.95
+  threshold_strict: 0.98
+  box_min_relaxed: 0.01
+  box_min_strict: 0.04
+  box_max_strict: 0.8
+
+backend:
+  accelerator: ddp
+  gpus: -1
+  logger: null
+  precision: 16
+
+defaults:
+  - disable_output

@@ -1,0 +1,19 @@
+input_dir: null
+output_dir: null
+
+data:
+  resolution: 256
+  batch_size: 64
+  num_workers: 8
+
+mask_generator:
+  threshold: 0.95
+  threshold_nms: 0.3
+
+backend:
+  accelerator: ddp
+  gpus: -1
+  logger: null
+
+defaults:
+  - disable_output
